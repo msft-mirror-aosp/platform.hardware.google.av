@@ -76,6 +76,17 @@ ECOSession::ECOSession(int32_t width, int32_t height, bool isCameraRecording)
     ECOLOGI("ECOSession created with w: %d, h: %d, isCameraRecording: %d", mWidth, mHeight,
             mIsCameraRecording);
     mThread = std::thread(startThread, this);
+
+    // Read the debug properies.
+    mLogStats = property_get_bool(kDebugLogStats, false);
+    mLogStatsEntries = mLogStats ? property_get_int32(kDebugLogStatsSize, 0) : 0;
+
+    mLogInfo = property_get_bool(kDebugLogStats, false);
+    mLogInfoEntries = mLogInfo ? property_get_int32(kDebugLogInfosSize, 0) : 0;
+
+    ECOLOGI("ECOSession debug settings: logStats: %s, entries: %d, logInfo: %s entries: %d",
+            mLogStats ? "true" : "false", mLogStatsEntries, mLogInfo ? "true" : "false",
+            mLogInfoEntries);
 }
 
 ECOSession::~ECOSession() {
@@ -114,6 +125,8 @@ void ECOSession::run() {
 }
 
 bool ECOSession::processStats(const ECOData& stats) {
+    ECOLOGV("%s: receive stats: %s", __FUNCTION__, stats.debugString().c_str());
+
     if (stats.getDataType() != ECOData::DATA_TYPE_STATS) {
         ECOLOGE("Invalid stats. ECOData with type: %s", stats.getDataTypeString().c_str());
         return false;
@@ -191,6 +204,7 @@ bool ECOSession::processSessionStats(const ECOData& stats) {
     }
 
     if (mListener != nullptr) {
+        ECOLOGV("%s: publish info: %s", __FUNCTION__, info.debugString().c_str());
         mListener->onNewInfo(info);
     }
 
@@ -409,6 +423,30 @@ Status ECOSession::getNumOfProviders(int32_t* _aidl_return) {
 
 /*virtual*/ void ECOSession::binderDied(const wp<IBinder>& /*who*/) {
     ECOLOGV("binderDied");
+}
+
+void ECOSession::logStats(const ECOData& data) {
+    // Check if mLogStats is true;
+    if (!mLogStats || mLogStatsEntries == 0) return;
+
+    // Check if we need to remove the old entry.
+    if (mStatsDebugBuffer.size() >= mLogStatsEntries) {
+        mStatsDebugBuffer.pop_front();
+    }
+
+    mStatsDebugBuffer.push_back(data);
+}
+
+void ECOSession::logInfos(const ECOData& data) {
+    // Check if mLogInfo is true;
+    if (!mLogInfo || mLogInfoEntries == 0) return;
+
+    // Check if we need to remove the old entry.
+    if (mInfosDebugBuffer.size() >= mLogInfoEntries) {
+        mInfosDebugBuffer.pop_front();
+    }
+
+    mInfosDebugBuffer.push_back(data);
 }
 
 }  // namespace eco
