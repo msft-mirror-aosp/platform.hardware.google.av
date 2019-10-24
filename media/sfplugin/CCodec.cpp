@@ -26,7 +26,6 @@
 #include <C2ParamInternal.h>
 #include <C2PlatformSupport.h>
 
-#include <android/IGraphicBufferSource.h>
 #include <android/IOMXBufferSource.h>
 #include <android/hardware/media/omx/1.0/IGraphicBufferSource.h>
 #include <android/hardware/media/omx/1.0/IOmx.h>
@@ -35,7 +34,8 @@
 #include <gui/IGraphicBufferProducer.h>
 #include <gui/Surface.h>
 #include <gui/bufferqueue/1.0/H2BGraphicBufferProducer.h>
-#include <media/omx/1.0/WGraphicBufferSource.h>
+#include <media/omx/1.0/WOmxNode.h>
+#include <media/openmax/OMX_Core.h>
 #include <media/openmax/OMX_IndexExt.h>
 #include <media/stagefright/BufferProducerWrapper.h>
 #include <media/stagefright/MediaCodecConstants.h>
@@ -54,8 +54,9 @@ namespace android {
 using namespace std::chrono_literals;
 using ::android::hardware::graphics::bufferqueue::V1_0::utils::H2BGraphicBufferProducer;
 using android::base::StringPrintf;
-using BGraphicBufferSource = ::android::IGraphicBufferSource;
 using ::hardware::google::media::c2::V1_0::IInputSurface;
+
+using hardware::media::omx::V1_0::IGraphicBufferSource;
 
 namespace {
 
@@ -181,9 +182,10 @@ private:
 
 class GraphicBufferSourceWrapper : public InputSurfaceWrapper {
 public:
-//    explicit GraphicBufferSourceWrapper(const sp<BGraphicBufferSource> &source) : mSource(source) {}
+    typedef hardware::media::omx::V1_0::Status OmxStatus;
+
     GraphicBufferSourceWrapper(
-            const sp<BGraphicBufferSource> &source,
+            const sp<IGraphicBufferSource> &source,
             uint32_t width,
             uint32_t height)
         : mSource(source), mWidth(width), mHeight(height) {
@@ -197,7 +199,9 @@ public:
 
         // NOTE: we do not use/pass through color aspects from GraphicBufferSource as we
         // communicate that directly to the component.
-        mSource->configure(mNode, mDataSpace);
+        mSource->configure(
+                new hardware::media::omx::V1_0::utils::TWOmxNode(mNode),
+                static_cast<hardware::graphics::common::V1_0::Dataspace>(mDataSpace));
         return OK;
     }
 
@@ -215,17 +219,14 @@ public:
         mNode.clear();
     }
 
-    status_t GetStatus(const binder::Status &status) {
+    status_t GetStatus(hardware::Return<OmxStatus> &&status) {
         status_t err = OK;
         if (!status.isOk()) {
-            err = status.serviceSpecificErrorCode();
-            if (err == OK) {
-                err = status.transactionError();
-                if (err == OK) {
-                    // binder status failed, but there is no servie or transaction error
-                    err = UNKNOWN_ERROR;
-                }
-            }
+            err = static_cast<status_t>(status.withDefault(OmxStatus::UNKNOWN_ERROR));
+        } else if (status.isDeadObject()) {
+            err = DEAD_OBJECT;
+        } else {
+            err = UNKNOWN_ERROR;
         }
         return err;
     }
@@ -349,7 +350,14 @@ public:
                 err = res;
             } else {
                 status << " delayUs";
-                res = GetStatus(mSource->getStopTimeOffsetUs(&config.mInputDelayUs));
+                hardware::Return<void> trans = mSource->getStopTimeOffsetUs(
+                        [&res, &delayUs = config.mInputDelayUs](auto status, auto stopTimeOffsetUs) {
+                            res = static_cast<status_t>(status);
+                            delayUs = stopTimeOffsetUs;
+                        });
+                if (!trans.isOk()) {
+                    res = trans.isDeadObject() ? DEAD_OBJECT : UNKNOWN_ERROR;
+                }
                 if (res != OK) {
                     status << " (=> " << asString(res) << ")";
                 } else {
@@ -369,7 +377,7 @@ public:
     }
 
 private:
-    sp<BGraphicBufferSource> mSource;
+    sp<IGraphicBufferSource> mSource;
     sp<C2OMXNode> mNode;
     uint32_t mWidth;
     uint32_t mHeight;
@@ -955,25 +963,25 @@ void CCodec::createInputSurface() {
 
     std::shared_ptr<PersistentSurface> persistentSurface(CreateInputSurface());
 
-    if (persistentSurface->getHidlTarget()) {
-        sp<IInputSurface> inputSurface = IInputSurface::castFrom(
-                persistentSurface->getHidlTarget());
-        if (!inputSurface) {
-            ALOGE("Corrupted input surface");
-            mCallback->onInputSurfaceCreationFailed(UNKNOWN_ERROR);
-            return;
-        }
+    sp<hidl::base::V1_0::IBase> hidlTarget = persistentSurface->getHidlTarget();
+    sp<IInputSurface> inputSurface = IInputSurface::castFrom(hidlTarget);
+    sp<IGraphicBufferSource> gbs = IGraphicBufferSource::castFrom(hidlTarget);
+
+    if (inputSurface) {
         err = setupInputSurface(std::make_shared<C2InputSurfaceWrapper>(
                 std::make_shared<Codec2Client::InputSurface>(inputSurface)));
         bufferProducer = new H2BGraphicBufferProducer(inputSurface);
-    } else {
+    } else if (gbs) {
         int32_t width = 0;
         (void)outputFormat->findInt32("width", &width);
         int32_t height = 0;
         (void)outputFormat->findInt32("height", &height);
-        err = setupInputSurface(std::make_shared<GraphicBufferSourceWrapper>(
-                persistentSurface->getBufferSource(), width, height));
+        err = setupInputSurface(std::make_shared<GraphicBufferSourceWrapper>(gbs, width, height));
         bufferProducer = persistentSurface->getBufferProducer();
+    } else {
+        ALOGE("Corrupted input surface");
+        mCallback->onInputSurfaceCreationFailed(UNKNOWN_ERROR);
+        return;
     }
 
     if (err != OK) {
@@ -1037,15 +1045,10 @@ void CCodec::setInputSurface(const sp<PersistentSurface> &surface) {
         inputFormat = config->mInputFormat;
         outputFormat = config->mOutputFormat;
     }
-    auto hidlTarget = surface->getHidlTarget();
-    if (hidlTarget) {
-        sp<IInputSurface> inputSurface =
-                IInputSurface::castFrom(hidlTarget);
-        if (!inputSurface) {
-            ALOGE("Failed to set input surface: Corrupted surface.");
-            mCallback->onInputSurfaceDeclined(UNKNOWN_ERROR);
-            return;
-        }
+    sp<hidl::base::V1_0::IBase> hidlTarget = surface->getHidlTarget();
+    sp<IInputSurface> inputSurface = IInputSurface::castFrom(hidlTarget);
+    sp<IGraphicBufferSource> gbs = IGraphicBufferSource::castFrom(hidlTarget);
+    if (inputSurface) {
         status_t err = setupInputSurface(std::make_shared<C2InputSurfaceWrapper>(
                 std::make_shared<Codec2Client::InputSurface>(inputSurface)));
         if (err != OK) {
@@ -1053,18 +1056,22 @@ void CCodec::setInputSurface(const sp<PersistentSurface> &surface) {
             mCallback->onInputSurfaceDeclined(err);
             return;
         }
-    } else {
+    } else if (gbs) {
         int32_t width = 0;
         (void)outputFormat->findInt32("width", &width);
         int32_t height = 0;
         (void)outputFormat->findInt32("height", &height);
         status_t err = setupInputSurface(std::make_shared<GraphicBufferSourceWrapper>(
-                surface->getBufferSource(), width, height));
+                gbs, width, height));
         if (err != OK) {
             ALOGE("Failed to set up input surface: %d", err);
             mCallback->onInputSurfaceDeclined(err);
             return;
         }
+    } else {
+        ALOGE("Failed to set input surface: Corrupted surface.");
+        mCallback->onInputSurfaceDeclined(UNKNOWN_ERROR);
+        return;
     }
     mCallback->onInputSurfaceAccepted(inputFormat, outputFormat);
 }
@@ -1742,25 +1749,20 @@ extern "C" android::PersistentSurface *CreateInputSurface() {
     android::sp<IOmx> omx = IOmx::getService();
     typedef android::hardware::graphics::bufferqueue::V1_0::
             IGraphicBufferProducer HGraphicBufferProducer;
-    typedef android::hardware::media::omx::V1_0::
-            IGraphicBufferSource HGraphicBufferSource;
     OmxStatus s;
     android::sp<HGraphicBufferProducer> gbp;
-    android::sp<HGraphicBufferSource> gbs;
+    android::sp<IGraphicBufferSource> gbs;
     android::Return<void> transStatus = omx->createInputSurface(
             [&s, &gbp, &gbs](
                     OmxStatus status,
                     const android::sp<HGraphicBufferProducer>& producer,
-                    const android::sp<HGraphicBufferSource>& source) {
+                    const android::sp<IGraphicBufferSource>& source) {
                 s = status;
                 gbp = producer;
                 gbs = source;
             });
     if (transStatus.isOk() && s == OmxStatus::OK) {
-        return new android::PersistentSurface(
-                new H2BGraphicBufferProducer(gbp),
-                sp<::android::IGraphicBufferSource>(
-                    new LWGraphicBufferSource(gbs)));
+        return new android::PersistentSurface(new H2BGraphicBufferProducer(gbp), gbs);
     }
 
     return nullptr;
