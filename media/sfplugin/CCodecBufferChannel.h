@@ -31,6 +31,7 @@
 #include <media/stagefright/codec2/1.0/InputSurface.h>
 #include <media/stagefright/foundation/Mutexed.h>
 #include <media/stagefright/CodecBase.h>
+#include <media/ICrypto.h>
 
 #include "InputSurfaceWrapper.h"
 

@@ -13,7 +13,6 @@ cc_binary {
         "libbase",
         "libbinder",
         "libcutils",
-        "libdatasource",
         "libgui",
         "liblog",
         "libstagefright",
