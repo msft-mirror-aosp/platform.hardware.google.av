@@ -20,6 +20,7 @@ cc_library_shared {
         "ECOService.cpp",
         "ECOSession.cpp",
         "ECOUtils.cpp",
+        "ECOServiceStatsProvider.cpp",
     ],
 
     aidl: {
@@ -44,6 +45,7 @@ cc_library_shared {
         "libcutils",
         "liblog",
         "libutils",
+        "libcodec2_hidl@1.0",
     ],
 
     export_include_dirs: [
