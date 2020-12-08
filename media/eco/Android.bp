@@ -21,6 +21,7 @@ cc_library_shared {
         "ECOSession.cpp",
         "ECOUtils.cpp",
         "ECOServiceStatsProvider.cpp",
+        "ECOC2Utils.cpp",
     ],
 
     aidl: {
