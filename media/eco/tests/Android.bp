@@ -1,3 +1,8 @@
+package {
+    // See: http://go/android-license-faq
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
 cc_defaults{
     name : "libmedia_ecoservice_tests_defaults",
     cflags : [
