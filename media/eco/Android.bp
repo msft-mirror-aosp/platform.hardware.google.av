@@ -45,6 +45,9 @@ cc_library_shared {
     local_include_dirs: [
         "include",
     ],
+    export_include_dirs: [
+        "include",
+    ],
 
     shared_libs: [
         "libbinder",
@@ -53,9 +56,8 @@ cc_library_shared {
         "libutils",
         "libcodec2_hidl@1.0",
     ],
-
-    export_include_dirs: [
-        "include",
+    export_shared_lib_headers: [
+        "libbinder",
     ],
 
     sanitize: {
