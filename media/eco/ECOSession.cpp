@@ -381,7 +381,7 @@ Status ECOSession::addStatsProvider(
         return STATUS_ERROR(ERROR_PERMISSION_DENIED, "Failed to get provider name");
     }
 
-    ECOLOGV("Try to add stats provider name: %s uid: %d pid %d", ::android::String8(name).string(),
+    ECOLOGV("Try to add stats provider name: %s uid: %d pid %d", ::android::String8(name).c_str(),
             IPCThreadState::self()->getCallingUid(), IPCThreadState::self()->getCallingPid());
 
     if (provider == nullptr) {
@@ -397,10 +397,10 @@ Status ECOSession::addStatsProvider(
         mProvider->getName(&name);
         String8 errorMsg = String8::format(
                 "ECOService 1.0 only supports one stats provider, current provider: %s",
-                ::android::String8(name).string());
-        ECOLOGE("%s", errorMsg.string());
+                ::android::String8(name).c_str());
+        ECOLOGE("%s", errorMsg.c_str());
         *status = false;
-        return STATUS_ERROR(ERROR_ALREADY_EXISTS, errorMsg.string());
+        return STATUS_ERROR(ERROR_ALREADY_EXISTS, errorMsg.c_str());
     }
 
     // TODO: Handle the provider config.
@@ -482,7 +482,7 @@ Status ECOSession::addInfoListener(
         return STATUS_ERROR(ERROR_ILLEGAL_ARGUMENT, "listener config is not valid");
     }
 
-    ECOLOGD("Info listener name: %s uid: %d pid %d", ::android::String8(name).string(),
+    ECOLOGD("Info listener name: %s uid: %d pid %d", ::android::String8(name).c_str(),
             IPCThreadState::self()->getCallingUid(), IPCThreadState::self()->getCallingPid());
 
     mListener = listener;
@@ -556,10 +556,10 @@ status_t ECOSession::dump(int fd, const Vector<String16>& /*args*/) {
             mWidth, mHeight, mIsCameraRecording, mTargetBitrateBps, mCodecType, mCodecProfile,
             mCodecLevel);
     if (mProvider != nullptr) {
-        dprintf(fd, "Provider: %s \n", ::android::String8(mProviderName).string());
+        dprintf(fd, "Provider: %s \n", ::android::String8(mProviderName).c_str());
     }
     if (mListener != nullptr) {
-        dprintf(fd, "Listener: %s \n", ::android::String8(mListenerName).string());
+        dprintf(fd, "Listener: %s \n", ::android::String8(mListenerName).c_str());
     }
     dprintf(fd, "\n===================\n\n");
 
