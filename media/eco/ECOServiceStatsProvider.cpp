@@ -18,6 +18,8 @@
 #define LOG_TAG "ECOServiceStatsProvider"
 #include <eco/ECOServiceStatsProvider.h>
 
+#include <utils/Timers.h>
+
 namespace android {
 namespace media {
 namespace eco {
