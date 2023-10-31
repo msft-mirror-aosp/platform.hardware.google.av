@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <utils/Log.h>
+#include <utils/Timers.h>
 
 #include "FakeECOServiceInfoListener.h"
 #include "FakeECOServiceStatsProvider.h"

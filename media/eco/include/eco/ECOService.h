@@ -19,6 +19,7 @@
 
 #include <android/media/eco/BnECOService.h>
 #include <binder/BinderService.h>
+#include <utils/Mutex.h>
 
 #include <list>
 
