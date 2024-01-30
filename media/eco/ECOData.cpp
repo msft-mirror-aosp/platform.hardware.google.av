@@ -416,6 +416,10 @@ std::string ECOData::debugString() const {
     return s;
 }
 
+std::string ECOData::toString() const {
+    return debugString();
+}
+
 }  // namespace eco
 }  // namespace media
 }  // namespace android
