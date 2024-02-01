@@ -19,7 +19,6 @@
 #include <android-base/unique_fd.h>
 #include <android/media/eco/BnECOServiceInfoListener.h>
 #include <android/media/eco/IECOSession.h>
-#include <binder/BinderService.h>
 #include <binder/Parcel.h>
 #include <binder/Parcelable.h>
 #include <cutils/ashmem.h>

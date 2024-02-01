@@ -18,7 +18,7 @@
 #define ANDROID_MEDIA_ECO_SERVICE_H_
 
 #include <android/media/eco/BnECOService.h>
-#include <binder/BinderService.h>
+#include <binder/IServiceManager.h>
 #include <utils/Mutex.h>
 
 #include <list>
@@ -50,10 +50,8 @@ using android::media::eco::ECOSession;
  * ECOServiceStatsProvider and ECOServiceInfoListener should remove themselves from ECOSession.
  * Then ECOService will safely destroy the ECOSession.
  */
-class ECOService : public BinderService<ECOService>,
-                   public BnECOService,
+class ECOService : public BnECOService,
                    public virtual IBinder::DeathRecipient {
-    friend class BinderService<ECOService>;
 
 public:
     ECOService();
@@ -66,6 +64,14 @@ public:
     virtual Status getNumOfSessions(int32_t* _aidl_return);
 
     virtual Status getSessions(::std::vector<sp<IBinder>>* _aidl_return);
+
+    static status_t instantiate() {
+        bool allowIsolated = false;
+        int dumpFlags = IServiceManager::DUMP_FLAG_PRIORITY_DEFAULT;
+        sp<IServiceManager> sm(defaultServiceManager());
+        return sm->addService(String16(getServiceName()), new ECOService(), allowIsolated,
+                              dumpFlags);
+    }
 
     // Implementation of BinderService<T>
     static char const* getServiceName() { return "media.ecoservice"; }
