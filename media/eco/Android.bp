@@ -20,6 +20,7 @@ aidl_interface {
             enabled: true,
             additional_shared_libraries: [
                 "libmedia_ecoservice_ecodata",
+                "libbinder_ndk",
             ],
         },
         ndk: {
@@ -46,6 +47,7 @@ cc_library {
     shared_libs: [
         "libbase",
         "libbinder",
+        "libbinder_ndk",
         "liblog",
         "libutils",
     ],
@@ -89,6 +91,7 @@ cc_library_shared {
     ],
     shared_libs: [
         "libbinder",
+        "libbinder_ndk",
         "libcutils",
         "liblog",
         "libutils",
@@ -96,6 +99,7 @@ cc_library_shared {
     ],
     export_shared_lib_headers: [
         "libbinder",
+        "libbinder_ndk",
     ],
 
     sanitize: {
