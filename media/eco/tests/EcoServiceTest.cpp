@@ -22,6 +22,7 @@
 #include <android-base/unique_fd.h>
 #include <binder/Parcel.h>
 #include <binder/Parcelable.h>
+#include <binder/IServiceManager.h>
 #include <cutils/ashmem.h>
 #include <gtest/gtest.h>
 #include <math.h>

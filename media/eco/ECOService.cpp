@@ -19,7 +19,6 @@
 
 #include "eco/ECOService.h"
 
-#include <binder/BinderService.h>
 #include <cutils/atomic.h>
 #include <inttypes.h>
 #include <pthread.h>
