@@ -19,7 +19,7 @@
 //#define DEBUG_ECO_SESSION
 #include "eco/ECOSession.h"
 
-#include <binder/BinderService.h>
+#include <android/binder_ibinder.h>
 #include <cutils/atomic.h>
 #include <inttypes.h>
 #include <pthread.h>
@@ -383,7 +383,7 @@ Status ECOSession::addStatsProvider(
     }
 
     ECOLOGV("Try to add stats provider name: %s uid: %d pid %d", ::android::String8(name).c_str(),
-            IPCThreadState::self()->getCallingUid(), IPCThreadState::self()->getCallingPid());
+            AIBinder_getCallingUid(), AIBinder_getCallingPid());
 
     if (provider == nullptr) {
         ECOLOGE("%s: provider must not be null", __FUNCTION__);
@@ -484,7 +484,7 @@ Status ECOSession::addInfoListener(
     }
 
     ECOLOGD("Info listener name: %s uid: %d pid %d", ::android::String8(name).c_str(),
-            IPCThreadState::self()->getCallingUid(), IPCThreadState::self()->getCallingPid());
+            AIBinder_getCallingUid(), AIBinder_getCallingPid());
 
     mListener = listener;
     mListenerName = name;
