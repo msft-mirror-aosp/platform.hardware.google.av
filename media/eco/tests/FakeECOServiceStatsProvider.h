@@ -18,7 +18,6 @@
 
 #include <android-base/unique_fd.h>
 #include <android/media/eco/BnECOServiceStatsProvider.h>
-#include <binder/BinderService.h>
 #include <binder/Parcel.h>
 #include <binder/Parcelable.h>
 #include <cutils/ashmem.h>

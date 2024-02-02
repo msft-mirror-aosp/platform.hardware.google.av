@@ -20,7 +20,6 @@
 #include <android/media/eco/BnECOServiceStatsProvider.h>
 #include <android/media/eco/IECOSession.h>
 #include <android/media/eco/IECOService.h>
-#include <binder/BinderService.h>
 
 #include <condition_variable>
 #include <memory>
@@ -39,10 +38,8 @@ using ::android::binder::Status;
 /**
  * ECOServiceStatsProvider interface class.
  */
-class ECOServiceStatsProvider : public BinderService<IECOServiceStatsProvider>,
-                                public BnECOServiceStatsProvider,
+class ECOServiceStatsProvider : public BnECOServiceStatsProvider,
                                 public virtual IBinder::DeathRecipient {
-    friend class BinderService<IECOServiceStatsProvider>;
 
 public:
     virtual ~ECOServiceStatsProvider() {}
