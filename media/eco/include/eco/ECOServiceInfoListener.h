@@ -19,7 +19,6 @@
 
 #include <android/media/eco/BnECOServiceInfoListener.h>
 #include <android/media/eco/IECOSession.h>
-#include <binder/BinderService.h>
 
 #include <condition_variable>
 #include <memory>
@@ -37,10 +36,8 @@ using ::android::binder::Status;
 /**
  * ECOServiceInfoListener interface class.
  */
-class ECOServiceInfoListener : public BinderService<IECOServiceInfoListener>,
-                               public BnECOServiceInfoListener,
+class ECOServiceInfoListener : public BnECOServiceInfoListener,
                                public virtual IBinder::DeathRecipient {
-    friend class BinderService<IECOServiceInfoListener>;
 
 public:
     // Create a ECOServiceInfoListener with specifed width, height and isCameraRecording.

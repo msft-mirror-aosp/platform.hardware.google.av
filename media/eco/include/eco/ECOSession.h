@@ -19,7 +19,6 @@
 
 #include <android/media/eco/BnECOSession.h>
 #include <android/media/eco/IECOServiceStatsProvider.h>
-#include <binder/BinderService.h>
 
 #include <condition_variable>
 #include <deque>
@@ -47,10 +46,8 @@ using ::android::binder::Status;
  * it only supports resolution of up to 720P and only for camera recording use case. Also, it only
  * supports encoder as the provider and camera as listener.
  */
-class ECOSession : public BinderService<ECOSession>,
-                   public BnECOSession,
+class ECOSession : public BnECOSession,
                    public virtual IBinder::DeathRecipient {
-    friend class BinderService<ECOSession>;
 
 public:
     virtual ~ECOSession();
