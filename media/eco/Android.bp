@@ -3,15 +3,54 @@ package {
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
-filegroup {
+aidl_interface {
     name: "libmedia_ecoservice_aidl",
+    vendor_available: true,
+    owner: "google",
+    local_include_dir: "aidl",
     srcs: [
         "aidl/android/media/eco/IECOService.aidl",
         "aidl/android/media/eco/IECOSession.aidl",
         "aidl/android/media/eco/IECOServiceStatsProvider.aidl",
         "aidl/android/media/eco/IECOServiceInfoListener.aidl",
     ],
-    path: "aidl",
+    unstable: true,
+    backend: {
+        cpp: {
+            enabled: true,
+            additional_shared_libraries: [
+                "libmedia_ecoservice_ecodata",
+                "libbinder_ndk",
+            ],
+        },
+        ndk: {
+            enabled: false,
+        },
+        java: {
+            enabled: false,
+        },
+    },
+}
+
+cc_library {
+    name: "libmedia_ecoservice_ecodata",
+    vendor_available: true,
+
+    srcs: [
+        "ECOData.cpp",
+    ],
+
+    export_include_dirs: [
+        "include",
+    ],
+
+    shared_libs: [
+        "libbase",
+        "libbinder",
+        "libbinder_ndk",
+        "liblog",
+        "libutils",
+    ],
 }
 
 cc_library_shared {
@@ -19,8 +58,6 @@ cc_library_shared {
     vendor_available: true,
 
     srcs: [
-        ":libmedia_ecoservice_aidl",
-        "ECOData.cpp",
         "ECODebug.cpp",
         "ECOService.cpp",
         "ECOSession.cpp",
@@ -48,9 +85,13 @@ cc_library_shared {
     export_include_dirs: [
         "include",
     ],
-
+    whole_static_libs: [
+        "libmedia_ecoservice_ecodata",
+        "libmedia_ecoservice_aidl-cpp",
+    ],
     shared_libs: [
         "libbinder",
+        "libbinder_ndk",
         "libcutils",
         "liblog",
         "libutils",
@@ -58,6 +99,7 @@ cc_library_shared {
     ],
     export_shared_lib_headers: [
         "libbinder",
+        "libbinder_ndk",
     ],
 
     sanitize: {

@@ -20,8 +20,6 @@
 #include "FakeECOServiceStatsProvider.h"
 
 #include <android-base/unique_fd.h>
-#include <binder/IPCThreadState.h>
-#include <binder/IServiceManager.h>
 #include <binder/Parcel.h>
 #include <binder/Parcelable.h>
 #include <cutils/ashmem.h>

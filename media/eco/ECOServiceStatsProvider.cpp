@@ -18,6 +18,7 @@
 #define LOG_TAG "ECOServiceStatsProvider"
 #include <eco/ECOServiceStatsProvider.h>
 
+#include <binder/IServiceManager.h>
 #include <utils/Timers.h>
 
 namespace android {
@@ -34,7 +35,7 @@ ECOServiceStatsProvider::ECOServiceStatsProvider(
         mECOSession(session),
         mProviderName(name) {
     ALOGD("%s, construct with w: %d, h: %d, isCameraRecording: %d, ProviderName:%s",
-            __func__, width, height, isCameraRecording, name);
+            __func__, mWidth, mHeight, isCameraRecording, name);
 }
 
 Status ECOServiceStatsProvider::getType(int32_t* _aidl_return) {

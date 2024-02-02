@@ -161,6 +161,8 @@ public:
     // Dump the ECOData as a string.
     std::string debugString() const;
 
+    std::string toString() const;
+
 protected:
     // ValueType. This must match the index in ECODataValueType.
     enum ValueType {
