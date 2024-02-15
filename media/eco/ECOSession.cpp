@@ -41,8 +41,8 @@ namespace android {
 namespace media {
 namespace eco {
 
-using android::binder::Status;
-using android::sp;
+using ::aidl::android::media::eco::ECODataKeyValueIterator;
+using ndk::ScopedAStatus;
 
 #define RETURN_IF_ERROR(expr)         \
     {                                 \
@@ -53,7 +53,8 @@ using android::sp;
     }
 
 // static
-sp<ECOSession> ECOSession::createECOSession(int32_t width, int32_t height, bool isCameraRecording) {
+std::shared_ptr<ECOSession> ECOSession::createECOSession(int32_t width, int32_t height,
+                                                         bool isCameraRecording) {
     // Only support up to 1080P.
     // TODO: Support the same resolution as in EAF.
     if (width <= 0 || height <= 0 || width > 5120 || height > 5120 ||
@@ -62,7 +63,7 @@ sp<ECOSession> ECOSession::createECOSession(int32_t width, int32_t height, bool 
                 height, isCameraRecording);
         return nullptr;
     }
-    return new ECOSession(width, height, isCameraRecording);
+    return ndk::SharedRefBase::make<ECOSession>(width, height, isCameraRecording);
 }
 
 ECOSession::ECOSession(int32_t width, int32_t height, bool isCameraRecording)
@@ -124,7 +125,7 @@ void ECOSession::run() {
             // Check if there is any session info available.
             ECOData sessionInfo = generateLatestSessionInfoEcoData();
             if (!sessionInfo.isEmpty()) {
-                Status status = mListener->onNewInfo(sessionInfo);
+                ScopedAStatus status = mListener->onNewInfo(sessionInfo);
                 if (!status.isOk()) {
                     ECOLOGE("%s: Failed to publish info: %s due to binder error", __FUNCTION__,
                             sessionInfo.debugString().c_str());
@@ -237,7 +238,7 @@ void ECOSession::processSessionStats(const ECOData& stats) {
     }
 
     if (mListener != nullptr) {
-        Status status = mListener->onNewInfo(info);
+        ScopedAStatus status = mListener->onNewInfo(info);
         if (!status.isOk()) {
             ECOLOGE("%s: Failed to publish info: %s due to binder error", __FUNCTION__,
                     info.debugString().c_str());
@@ -354,7 +355,7 @@ void ECOSession::processFrameStats(const ECOData& stats) {
     }
 
     if (needToNotifyListener && mListener != nullptr) {
-        Status status = mListener->onNewInfo(info);
+        ScopedAStatus status = mListener->onNewInfo(info);
         if (!status.isOk()) {
             ECOLOGE("%s: Failed to publish info: %s due to binder error", __FUNCTION__,
                     info.debugString().c_str());
@@ -364,17 +365,17 @@ void ECOSession::processFrameStats(const ECOData& stats) {
     }
 }
 
-Status ECOSession::getIsCameraRecording(bool* _aidl_return) {
+ScopedAStatus ECOSession::getIsCameraRecording(bool* _aidl_return) {
     std::scoped_lock<std::mutex> lock(mSessionLock);
     *_aidl_return = mIsCameraRecording;
-    return binder::Status::ok();
+    return ndk::ScopedAStatus::ok();
 }
 
-Status ECOSession::addStatsProvider(
-        const sp<::android::media::eco::IECOServiceStatsProvider>& provider,
+ScopedAStatus ECOSession::addStatsProvider(
+        const std::shared_ptr<::android::media::eco::IECOServiceStatsProvider>& provider,
         const ::android::media::eco::ECOData& config, bool* status) {
-    ::android::String16 name;
-    Status result = provider->getName(&name);
+    std::string name;
+    ScopedAStatus result = provider->getName(&name);
     if (!result.isOk()) {
         // This binder transaction failure may due to permission issue.
         *status = false;
@@ -382,7 +383,7 @@ Status ECOSession::addStatsProvider(
         return STATUS_ERROR(ERROR_PERMISSION_DENIED, "Failed to get provider name");
     }
 
-    ECOLOGV("Try to add stats provider name: %s uid: %d pid %d", ::android::String8(name).c_str(),
+    ECOLOGV("Try to add stats provider name: %s uid: %d pid %d", name.c_str(),
             AIBinder_getCallingUid(), AIBinder_getCallingPid());
 
     if (provider == nullptr) {
@@ -394,11 +395,10 @@ Status ECOSession::addStatsProvider(
     std::scoped_lock<std::mutex> lock(mSessionLock);
 
     if (mProvider != nullptr) {
-        ::android::String16 name;
+        std::string name;
         mProvider->getName(&name);
-        String8 errorMsg = String8::format(
-                "ECOService 1.0 only supports one stats provider, current provider: %s",
-                ::android::String8(name).c_str());
+        std::string errorMsg =
+                "ECOService 1.0 only supports one stats provider, current provider: " + name;
         ECOLOGE("%s", errorMsg.c_str());
         *status = false;
         return STATUS_ERROR(ERROR_ALREADY_EXISTS, errorMsg.c_str());
@@ -414,14 +414,15 @@ Status ECOSession::addStatsProvider(
     mProvider = provider;
     mProviderName = name;
     *status = true;
-    return binder::Status::ok();
+    return ndk::ScopedAStatus::ok();
 }
 
-Status ECOSession::removeStatsProvider(
-        const sp<::android::media::eco::IECOServiceStatsProvider>& provider, bool* status) {
+ScopedAStatus ECOSession::removeStatsProvider(
+        const std::shared_ptr<::android::media::eco::IECOServiceStatsProvider>& provider,
+        bool* status) {
     std::scoped_lock<std::mutex> lock(mSessionLock);
     // Check if the provider is the same as current provider for the session.
-    if (IInterface::asBinder(provider) != IInterface::asBinder(mProvider)) {
+    if (provider->asBinder() != mProvider->asBinder()) {
         *status = false;
         ECOLOGE("Failed to remove provider");
         return STATUS_ERROR(ERROR_ILLEGAL_ARGUMENT, "Provider does not match");
@@ -429,17 +430,17 @@ Status ECOSession::removeStatsProvider(
 
     mProvider = nullptr;
     *status = true;
-    return binder::Status::ok();
+    return ndk::ScopedAStatus::ok();
 }
 
-Status ECOSession::addInfoListener(
-        const sp<::android::media::eco::IECOServiceInfoListener>& listener,
+ScopedAStatus ECOSession::addInfoListener(
+        const std::shared_ptr<::android::media::eco::IECOServiceInfoListener>& listener,
         const ::android::media::eco::ECOData& config, bool* status) {
     ALOGV("%s: Add listener %p", __FUNCTION__, listener.get());
     std::scoped_lock<std::mutex> lock(mSessionLock);
 
-    ::android::String16 name;
-    Status result = listener->getName(&name);
+    std::string name;
+    ScopedAStatus result = listener->getName(&name);
     if (!result.isOk()) {
         // This binder transaction failure may due to permission issue.
         *status = false;
@@ -483,7 +484,7 @@ Status ECOSession::addInfoListener(
         return STATUS_ERROR(ERROR_ILLEGAL_ARGUMENT, "listener config is not valid");
     }
 
-    ECOLOGD("Info listener name: %s uid: %d pid %d", ::android::String8(name).c_str(),
+    ECOLOGD("Info listener name: %s uid: %d pid %d", name.c_str(),
             AIBinder_getCallingUid(), AIBinder_getCallingPid());
 
     mListener = listener;
@@ -492,14 +493,15 @@ Status ECOSession::addInfoListener(
     mWorkerWaitCV.notify_all();
 
     *status = true;
-    return binder::Status::ok();
+    return ndk::ScopedAStatus::ok();
 }
 
-Status ECOSession::removeInfoListener(
-        const sp<::android::media::eco::IECOServiceInfoListener>& listener, bool* _aidl_return) {
+ScopedAStatus ECOSession::removeInfoListener(
+        const std::shared_ptr<::android::media::eco::IECOServiceInfoListener>& listener,
+        bool* _aidl_return) {
     std::scoped_lock<std::mutex> lock(mSessionLock);
     // Check if the listener is the same as current listener for the session.
-    if (IInterface::asBinder(listener) != IInterface::asBinder(mListener)) {
+    if (listener->asBinder() != mListener->asBinder()) {
         *_aidl_return = false;
         ECOLOGE("Failed to remove listener");
         return STATUS_ERROR(ERROR_ILLEGAL_ARGUMENT, "Listener does not match");
@@ -508,47 +510,44 @@ Status ECOSession::removeInfoListener(
     mListener = nullptr;
     mNewListenerAdded = false;
     *_aidl_return = true;
-    return binder::Status::ok();
+    return ndk::ScopedAStatus::ok();
 }
 
-Status ECOSession::pushNewStats(const ::android::media::eco::ECOData& stats, bool* _aidl_return) {
+ScopedAStatus ECOSession::pushNewStats(const ::android::media::eco::ECOData& stats,
+                                       bool* _aidl_return) {
     ECOLOGV("ECOSession get new stats type: %s", stats.getDataTypeString().c_str());
     std::unique_lock<std::mutex> lock(mStatsQueueLock);
     mStatsQueue.push_back(stats);
     mWorkerWaitCV.notify_all();
     *_aidl_return = true;
-    return binder::Status::ok();
+    return ndk::ScopedAStatus::ok();
 }
 
-Status ECOSession::getWidth(int32_t* _aidl_return) {
+ScopedAStatus ECOSession::getWidth(int32_t* _aidl_return) {
     std::scoped_lock<std::mutex> lock(mSessionLock);
     *_aidl_return = mWidth;
-    return binder::Status::ok();
+    return ndk::ScopedAStatus::ok();
 }
 
-Status ECOSession::getHeight(int32_t* _aidl_return) {
+ScopedAStatus ECOSession::getHeight(int32_t* _aidl_return) {
     std::scoped_lock<std::mutex> lock(mSessionLock);
     *_aidl_return = mHeight;
-    return binder::Status::ok();
+    return ndk::ScopedAStatus::ok();
 }
 
-Status ECOSession::getNumOfListeners(int32_t* _aidl_return) {
+ScopedAStatus ECOSession::getNumOfListeners(int32_t* _aidl_return) {
     std::scoped_lock<std::mutex> lock(mSessionLock);
     *_aidl_return = (mListener == nullptr ? 0 : 1);
-    return binder::Status::ok();
+    return ndk::ScopedAStatus::ok();
 }
 
-Status ECOSession::getNumOfProviders(int32_t* _aidl_return) {
+ScopedAStatus ECOSession::getNumOfProviders(int32_t* _aidl_return) {
     std::scoped_lock<std::mutex> lock(mSessionLock);
     *_aidl_return = (mProvider == nullptr ? 0 : 1);
-    return binder::Status::ok();
+    return ndk::ScopedAStatus::ok();
 }
 
-/*virtual*/ void ECOSession::binderDied(const wp<IBinder>& /*who*/) {
-    ECOLOGV("binderDied");
-}
-
-status_t ECOSession::dump(int fd, const Vector<String16>& /*args*/) {
+status_t ECOSession::dump(int fd, const std::vector<std::string>& /*args*/) {
     std::scoped_lock<std::mutex> lock(mSessionLock);
     dprintf(fd, "\n== Session Info: ==\n\n");
     dprintf(fd,
@@ -557,10 +556,10 @@ status_t ECOSession::dump(int fd, const Vector<String16>& /*args*/) {
             mWidth, mHeight, mIsCameraRecording, mTargetBitrateBps, mCodecType, mCodecProfile,
             mCodecLevel);
     if (mProvider != nullptr) {
-        dprintf(fd, "Provider: %s \n", ::android::String8(mProviderName).c_str());
+        dprintf(fd, "Provider: %s \n", mProviderName.c_str());
     }
     if (mListener != nullptr) {
-        dprintf(fd, "Listener: %s \n", ::android::String8(mListenerName).c_str());
+        dprintf(fd, "Listener: %s \n", mListenerName.c_str());
     }
     dprintf(fd, "\n===================\n\n");
 

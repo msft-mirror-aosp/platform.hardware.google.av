@@ -17,4 +17,4 @@
 package android.media.eco;
 
 /** @hide */
-parcelable ECOData cpp_header "eco/ECOData.h";
+parcelable ECOData ndk_header "eco/ECOData.h";
