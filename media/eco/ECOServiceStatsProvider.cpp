@@ -16,15 +16,18 @@
 
 //#define LOG_NDEBUG 0
 #define LOG_TAG "ECOServiceStatsProvider"
+#include <android/binder_manager.h>
 #include <eco/ECOServiceStatsProvider.h>
+#include <utils/Timers.h>
 
 namespace android {
 namespace media {
 namespace eco {
 
-ECOServiceStatsProvider::ECOServiceStatsProvider(
-    int32_t width, int32_t height, bool isCameraRecording,
-    android::sp<IECOSession>& session, const char* name)
+ECOServiceStatsProvider::ECOServiceStatsProvider(int32_t width, int32_t height,
+                                                 bool isCameraRecording,
+                                                 std::shared_ptr<IECOSession>& session,
+                                                 const char* name)
       : BnECOServiceStatsProvider(),
         mWidth(width),
         mHeight(height),
@@ -32,35 +35,35 @@ ECOServiceStatsProvider::ECOServiceStatsProvider(
         mECOSession(session),
         mProviderName(name) {
     ALOGD("%s, construct with w: %d, h: %d, isCameraRecording: %d, ProviderName:%s",
-            __func__, width, height, isCameraRecording, name);
+            __func__, mWidth, mHeight, isCameraRecording, name);
 }
 
-Status ECOServiceStatsProvider::getType(int32_t* _aidl_return) {
+ScopedAStatus ECOServiceStatsProvider::getType(int32_t* _aidl_return) {
     *_aidl_return = STATS_PROVIDER_TYPE_VIDEO_ENCODER;
-    return Status::ok();
+    return ScopedAStatus::ok();
 }
 
-Status ECOServiceStatsProvider::getName(::android::String16* _aidl_return) {
-    *_aidl_return = String16(mProviderName);
-    return Status::ok();
+ScopedAStatus ECOServiceStatsProvider::getName(std::string* _aidl_return) {
+    *_aidl_return = std::string(mProviderName);
+    return ScopedAStatus::ok();
 }
 
-Status ECOServiceStatsProvider::getECOSession(android::sp<::android::IBinder>* _aidl_return) {
-    *_aidl_return = IInterface::asBinder(mECOSession);
-    return Status::ok();
+ScopedAStatus ECOServiceStatsProvider::getECOSession(::ndk::SpAIBinder* _aidl_return) {
+    *_aidl_return = mECOSession->asBinder();
+    return ScopedAStatus::ok();
 }
 
-Status ECOServiceStatsProvider::isCameraRecording(bool* _aidl_return) {
+ScopedAStatus ECOServiceStatsProvider::isCameraRecording(bool* _aidl_return) {
     *_aidl_return = mIsCameraRecording;
-    return Status::ok();
+    return ScopedAStatus::ok();
 }
 
-void ECOServiceStatsProvider::binderDied(const wp<IBinder>& /* who */) {}
+void ECOServiceStatsProvider::binderDied(const std::weak_ptr<AIBinder>& /* who */) {}
 
 bool ECOServiceStatsProvider::updateStats(const ECOData& data) {
     bool ret = false;
     if (mECOSession) {
-        Status status = mECOSession->pushNewStats(data, &ret);
+        ScopedAStatus status = mECOSession->pushNewStats(data, &ret);
         return ret;
     }
     return ret;
@@ -70,7 +73,7 @@ bool ECOServiceStatsProvider::addProvider() {
     bool ret = false;
     if (mECOSession) {
         ECOData providerConfig(ECOData::DATA_TYPE_STATS_PROVIDER_CONFIG, systemTime() / 1000);
-        mECOSession->addStatsProvider(this, providerConfig, &ret);
+        mECOSession->addStatsProvider(fromBinder(asBinder()), providerConfig, &ret);
         return ret;
     }
     return ret;
@@ -79,28 +82,27 @@ bool ECOServiceStatsProvider::addProvider() {
 bool ECOServiceStatsProvider::removeProvider() {
     bool ret = false;
     if (mECOSession) {
-        mECOSession->removeStatsProvider(this, &ret);
+        mECOSession->removeStatsProvider(fromBinder(asBinder()), &ret);
         return ret;
     }
     return ret;
 }
 
-android::sp<ECOServiceStatsProvider> ECOServiceStatsProvider::create(
-    int32_t width, int32_t height, bool isCameraRecording, const char* name) {
-
-    android::sp<android::IServiceManager> sm = android::defaultServiceManager();
-    android::sp<android::IBinder> binder = sm->getService(String16("media.ecoservice"));
-
-    if (binder == nullptr) {
+std::shared_ptr<ECOServiceStatsProvider> ECOServiceStatsProvider::create(int32_t width,
+                                                                         int32_t height,
+                                                                         bool isCameraRecording,
+                                                                         const char* name) {
+    std::shared_ptr<IECOService> service = IECOService::fromBinder(
+            ndk::SpAIBinder(AServiceManager_waitForService("media.ecoservice")));
+    if (service == nullptr) {
         ALOGE("Failed to connect to ecoservice");
         return nullptr;
     }
 
-    android::sp<IECOService> service = android::interface_cast<IECOService>(binder);
     ALOGI("Connected to ecoservice");
 
     // Obtain the ECOSession and add the listener to the service.
-    android::sp<IECOSession> session = nullptr;
+    std::shared_ptr<IECOSession> session = nullptr;
 
     service->obtainSession(width, height, isCameraRecording, &session);
 
@@ -110,7 +112,8 @@ android::sp<ECOServiceStatsProvider> ECOServiceStatsProvider::create(
     }
     ALOGI("Obtained an ECO session");
 
-    return new ECOServiceStatsProvider(width, height, isCameraRecording, session, name);
+    return ndk::SharedRefBase::make<ECOServiceStatsProvider>(width, height, isCameraRecording,
+                                                             session, name);
 }
 
 float ECOServiceStatsProvider::getFramerate(int64_t currTimestamp) {

@@ -20,10 +20,8 @@
 #include "FakeECOServiceStatsProvider.h"
 
 #include <android-base/unique_fd.h>
-#include <binder/IPCThreadState.h>
-#include <binder/IServiceManager.h>
-#include <binder/Parcel.h>
-#include <binder/Parcelable.h>
+#include <android/binder_auto_utils.h>
+#include <android/binder_parcel.h>
 #include <cutils/ashmem.h>
 #include <gtest/gtest.h>
 #include <math.h>
@@ -37,7 +35,7 @@ namespace eco {
 
 FakeECOServiceStatsProvider::FakeECOServiceStatsProvider(int32_t width, int32_t height,
                                                          bool isCameraRecording, float frameRate,
-                                                         android::sp<IECOSession> session)
+                                                         std::shared_ptr<IECOSession> session)
       : mWidth(width),
         mHeight(height),
         mIsCameraRecording(isCameraRecording),
@@ -65,18 +63,18 @@ FakeECOServiceStatsProvider::~FakeECOServiceStatsProvider() {
     ALOGD("FakeECOServiceStatsProvider destructor");
 }
 
-Status FakeECOServiceStatsProvider::getType(int32_t* /*_aidl_return*/) {
-    return binder::Status::ok();
+ndk::ScopedAStatus FakeECOServiceStatsProvider::getType(int32_t* /*_aidl_return*/) {
+    return ndk::ScopedAStatus::ok();
 }
 
-Status FakeECOServiceStatsProvider::getName(::android::String16* _aidl_return) {
-    *_aidl_return = String16("FakeECOServiceStatsProvider");
-    return binder::Status::ok();
+ndk::ScopedAStatus FakeECOServiceStatsProvider::getName(std::string* _aidl_return) {
+    *_aidl_return = std::string("FakeECOServiceStatsProvider");
+    return ndk::ScopedAStatus::ok();
 }
 
-Status FakeECOServiceStatsProvider::getECOSession(sp<::android::IBinder>* _aidl_return) {
-    *_aidl_return = IInterface::asBinder(mECOSession);
-    return binder::Status::ok();
+ndk::ScopedAStatus FakeECOServiceStatsProvider::getECOSession(::ndk::SpAIBinder* _aidl_return) {
+    *_aidl_return = mECOSession->asBinder();
+    return ndk::ScopedAStatus::ok();
 }
 
 bool FakeECOServiceStatsProvider::injectSessionStats(const ECOData& stats) {
@@ -96,7 +94,7 @@ bool FakeECOServiceStatsProvider::injectFrameStats(const ECOData& stats) {
 }
 
 // IBinder::DeathRecipient implementation
-void FakeECOServiceStatsProvider::binderDied(const wp<IBinder>& /*who*/) {}
+void FakeECOServiceStatsProvider::binderDied(const std::weak_ptr<AIBinder>& /*who*/) {}
 
 }  // namespace eco
 }  // namespace media
