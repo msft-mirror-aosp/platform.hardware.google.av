@@ -16,10 +16,10 @@
 
 // A fake ECOServiceStatsProvider for testing ECOService and ECOSession.
 
+#include <aidl/android/media/eco/BnECOServiceStatsProvider.h>
 #include <android-base/unique_fd.h>
-#include <android/media/eco/BnECOServiceStatsProvider.h>
-#include <binder/Parcel.h>
-#include <binder/Parcelable.h>
+#include <android/binder_auto_utils.h>
+#include <android/binder_parcel.h>
 #include <cutils/ashmem.h>
 #include <gtest/gtest.h>
 #include <math.h>
@@ -42,8 +42,7 @@ namespace android {
 namespace media {
 namespace eco {
 
-using ::android::sp;
-using ::android::binder::Status;
+using ::ndk::ScopedAStatus;
 
 /**
  * A fake ECOServiceStatsProvider.
@@ -54,12 +53,12 @@ using ::android::binder::Status;
 class FakeECOServiceStatsProvider : public BnECOServiceStatsProvider {
 public:
     FakeECOServiceStatsProvider(int32_t width, int32_t height, bool isCameraRecording,
-                                float frameRate, android::sp<IECOSession> session);
+                                float frameRate, std::shared_ptr<IECOSession> session);
 
     FakeECOServiceStatsProvider(int32_t width, int32_t height, bool isCameraRecording,
                                 float frameRate);
 
-    void setECOSession(android::sp<IECOSession> session) { mECOSession = session; }
+    void setECOSession(std::shared_ptr<IECOSession> session) { mECOSession = session; }
 
     // Helper function to inject session stats to the FakeECOServiceStatsProvider so provider
     // could push to the service.
@@ -77,12 +76,12 @@ public:
 
     virtual ~FakeECOServiceStatsProvider();
 
-    virtual Status getType(int32_t* _aidl_return);
-    virtual Status getName(::android::String16* _aidl_return);
-    virtual Status getECOSession(::android::sp<::android::IBinder>* _aidl_return);
+    virtual ScopedAStatus getType(int32_t* _aidl_return);
+    virtual ScopedAStatus getName(std::string* _aidl_return);
+    virtual ScopedAStatus getECOSession(::ndk::SpAIBinder* _aidl_return);
 
     // IBinder::DeathRecipient implementation
-    virtual void binderDied(const wp<IBinder>& who);
+    virtual void binderDied(const std::weak_ptr<AIBinder>& who);
 
 private:
     int32_t mWidth;
@@ -91,7 +90,7 @@ private:
     float mFrameRate;
     uint32_t mFrameNumber;
 
-    android::sp<IECOSession> mECOSession;
+    std::shared_ptr<IECOSession> mECOSession;
 };
 
 }  // namespace eco
