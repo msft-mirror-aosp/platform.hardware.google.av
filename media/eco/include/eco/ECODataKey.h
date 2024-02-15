@@ -17,8 +17,8 @@
 #define ANDROID_MEDIA_ECO_DATA_KEY_H_
 
 #include <android-base/unique_fd.h>
-#include <binder/Parcel.h>
-#include <binder/Parcelable.h>
+#include <android/binder_auto_utils.h>
+#include <android/binder_parcel.h>
 #include <stdint.h>
 #include <sys/mman.h>
 
