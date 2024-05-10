@@ -19,13 +19,14 @@
 //#define DEBUG_ECO_SESSION
 #include "eco/ECOSession.h"
 
-#include <binder/BinderService.h>
+#include <android/binder_ibinder.h>
 #include <cutils/atomic.h>
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <utils/Log.h>
+#include <utils/Timers.h>
 
 #include <algorithm>
 #include <climits>
@@ -381,8 +382,8 @@ Status ECOSession::addStatsProvider(
         return STATUS_ERROR(ERROR_PERMISSION_DENIED, "Failed to get provider name");
     }
 
-    ECOLOGV("Try to add stats provider name: %s uid: %d pid %d", ::android::String8(name).string(),
-            IPCThreadState::self()->getCallingUid(), IPCThreadState::self()->getCallingPid());
+    ECOLOGV("Try to add stats provider name: %s uid: %d pid %d", ::android::String8(name).c_str(),
+            AIBinder_getCallingUid(), AIBinder_getCallingPid());
 
     if (provider == nullptr) {
         ECOLOGE("%s: provider must not be null", __FUNCTION__);
@@ -397,10 +398,10 @@ Status ECOSession::addStatsProvider(
         mProvider->getName(&name);
         String8 errorMsg = String8::format(
                 "ECOService 1.0 only supports one stats provider, current provider: %s",
-                ::android::String8(name).string());
-        ECOLOGE("%s", errorMsg.string());
+                ::android::String8(name).c_str());
+        ECOLOGE("%s", errorMsg.c_str());
         *status = false;
-        return STATUS_ERROR(ERROR_ALREADY_EXISTS, errorMsg.string());
+        return STATUS_ERROR(ERROR_ALREADY_EXISTS, errorMsg.c_str());
     }
 
     // TODO: Handle the provider config.
@@ -482,8 +483,8 @@ Status ECOSession::addInfoListener(
         return STATUS_ERROR(ERROR_ILLEGAL_ARGUMENT, "listener config is not valid");
     }
 
-    ECOLOGD("Info listener name: %s uid: %d pid %d", ::android::String8(name).string(),
-            IPCThreadState::self()->getCallingUid(), IPCThreadState::self()->getCallingPid());
+    ECOLOGD("Info listener name: %s uid: %d pid %d", ::android::String8(name).c_str(),
+            AIBinder_getCallingUid(), AIBinder_getCallingPid());
 
     mListener = listener;
     mListenerName = name;
@@ -556,10 +557,10 @@ status_t ECOSession::dump(int fd, const Vector<String16>& /*args*/) {
             mWidth, mHeight, mIsCameraRecording, mTargetBitrateBps, mCodecType, mCodecProfile,
             mCodecLevel);
     if (mProvider != nullptr) {
-        dprintf(fd, "Provider: %s \n", ::android::String8(mProviderName).string());
+        dprintf(fd, "Provider: %s \n", ::android::String8(mProviderName).c_str());
     }
     if (mListener != nullptr) {
-        dprintf(fd, "Listener: %s \n", ::android::String8(mListenerName).string());
+        dprintf(fd, "Listener: %s \n", ::android::String8(mListenerName).c_str());
     }
     dprintf(fd, "\n===================\n\n");
 
