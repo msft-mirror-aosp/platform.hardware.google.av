@@ -17,10 +17,10 @@
 #ifndef ANDROID_MEDIA_ECO_SERVICE_STATS_PROVIDER_H_
 #define ANDROID_MEDIA_ECO_SERVICE_STATS_PROVIDER_H_
 
-#include <android/media/eco/BnECOServiceStatsProvider.h>
-#include <android/media/eco/IECOSession.h>
-#include <android/media/eco/IECOService.h>
-#include <binder/BinderService.h>
+#include <aidl/android/media/eco/BnECOServiceStatsProvider.h>
+#include <aidl/android/media/eco/IECOService.h>
+#include <aidl/android/media/eco/IECOSession.h>
+#include <utils/Log.h>
 
 #include <condition_variable>
 #include <memory>
@@ -34,41 +34,43 @@ namespace android {
 namespace media {
 namespace eco {
 
-using ::android::binder::Status;
+using aidl::android::media::eco::BnECOServiceStatsProvider;
+using aidl::android::media::eco::ECOData;
+using aidl::android::media::eco::ECODataStatus;
+using aidl::android::media::eco::IECOService;
+using aidl::android::media::eco::IECOSession;
+using ::ndk::ScopedAStatus;
 
 /**
  * ECOServiceStatsProvider interface class.
  */
-class ECOServiceStatsProvider : public BinderService<IECOServiceStatsProvider>,
-                                public BnECOServiceStatsProvider,
-                                public virtual IBinder::DeathRecipient {
-    friend class BinderService<IECOServiceStatsProvider>;
-
+class ECOServiceStatsProvider : public BnECOServiceStatsProvider {
 public:
+    ECOServiceStatsProvider(int32_t width, int32_t height, bool isCameraRecording,
+                            std::shared_ptr<IECOSession>& session, const char* name);
     virtual ~ECOServiceStatsProvider() {}
 
-    virtual Status getType(int32_t* _aidl_return);
-    virtual Status getName(::android::String16* _aidl_return);
-    virtual Status getECOSession(::android::sp<::android::IBinder>* _aidl_return);
-    virtual Status isCameraRecording(bool* _aidl_return);
+    virtual ScopedAStatus getType(int32_t* _aidl_return);
+    virtual ScopedAStatus getName(std::string* _aidl_return);
+    virtual ScopedAStatus getECOSession(::ndk::SpAIBinder* _aidl_return);
+    virtual ScopedAStatus isCameraRecording(bool* _aidl_return);
 
     // IBinder::DeathRecipient implementation
-    virtual void binderDied(const wp<IBinder>& who);
+    virtual void binderDied(const std::weak_ptr<AIBinder>& who);
 
     bool updateStats(const ECOData& data);
     bool addProvider();
     bool removeProvider();
     float getFramerate(int64_t currTimestamp);
-    static android::sp<ECOServiceStatsProvider> create(
-        int32_t width, int32_t height, bool isCameraRecording, const char* name);
+    static std::shared_ptr<ECOServiceStatsProvider> create(int32_t width, int32_t height,
+                                                           bool isCameraRecording,
+                                                           const char* name);
 
 private:
-    ECOServiceStatsProvider(int32_t width, int32_t height, bool isCameraRecording,
-                            android::sp<IECOSession>& session, const char* name);
     int32_t mWidth = 0;
     int32_t mHeight = 0;
     bool mIsCameraRecording = false;
-    android::sp<IECOSession> mECOSession = nullptr;
+    std::shared_ptr<IECOSession> mECOSession = nullptr;
     const char* mProviderName = nullptr;
     int64_t mLastFrameTimestamp = 0;
 };

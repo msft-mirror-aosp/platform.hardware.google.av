@@ -19,7 +19,8 @@
 
 #include "eco/ECOData.h"
 
-#include <binder/Parcel.h>
+#include <android/binder_parcel.h>
+#include <android/binder_parcel_utils.h>
 #include <inttypes.h>
 #include <utils/Errors.h>
 #include <utils/Log.h>
@@ -29,81 +30,76 @@
 #include "eco/ECODataKey.h"
 #include "eco/ECOUtils.h"
 
+namespace aidl {
 namespace android {
 namespace media {
 namespace eco {
 
 using namespace ::android;
 
-status_t ECOData::readFromParcel(const Parcel* parcel) {
+binder_status_t ECOData::readFromParcel(const AParcel* parcel) {
     if (parcel == nullptr) {
         ALOGE("readFromParcel failed. Parcel pointer can not be null");
         return BAD_VALUE;
     }
 
     // Reads the data type and time.
-    RETURN_STATUS_IF_ERROR(parcel->readInt32(&mDataType));
-    RETURN_STATUS_IF_ERROR(parcel->readInt64(&mDataTimeUs));
+    RETURN_STATUS_IF_ERROR(AParcel_readInt32(parcel, &mDataType));
+    RETURN_STATUS_IF_ERROR(AParcel_readInt64(parcel, &mDataTimeUs));
 
     // Reads the number of items.
     uint32_t numOfItems = 0;
-    RETURN_STATUS_IF_ERROR(parcel->readUint32(&numOfItems));
+    RETURN_STATUS_IF_ERROR(AParcel_readUint32(parcel, &numOfItems));
 
     // Reads the key-value pairs one by one.
     for (size_t i = 0; i < numOfItems; ++i) {
         // Reads the name of the key.
-        const char* name = parcel->readCString();
-        if (name == NULL) {
-            ALOGE("Failed reading name for the key. Parsing aborted.");
-            return NAME_NOT_FOUND;
-        }
+        std::string name;
+        AParcel_readString(parcel, &name, ndk::AParcel_stdStringAllocator);
 
         int32_t type;
-        RETURN_STATUS_IF_ERROR(parcel->readInt32(&type));
+        RETURN_STATUS_IF_ERROR(AParcel_readInt32(parcel, &type));
         switch (static_cast<ValueType>(type)) {
         case kTypeInt32: {
             int32_t value32;
-            RETURN_STATUS_IF_ERROR(parcel->readInt32(&value32));
-            setInt32(std::string(name), value32);
+            RETURN_STATUS_IF_ERROR(AParcel_readInt32(parcel, &value32));
+            setInt32(name, value32);
             break;
         }
         case kTypeInt64: {
             int64_t value64;
-            RETURN_STATUS_IF_ERROR(parcel->readInt64(&value64));
-            setInt64(std::string(name), value64);
+            RETURN_STATUS_IF_ERROR(AParcel_readInt64(parcel, &value64));
+            setInt64(name, value64);
             break;
         }
         case kTypeSize: {
             int32_t valueSize;
-            RETURN_STATUS_IF_ERROR(parcel->readInt32(&valueSize));
-            setInt32(std::string(name), valueSize);
+            RETURN_STATUS_IF_ERROR(AParcel_readInt32(parcel, &valueSize));
+            setInt32(name, valueSize);
             break;
         }
         case kTypeFloat: {
             float valueFloat;
-            RETURN_STATUS_IF_ERROR(parcel->readFloat(&valueFloat));
-            setFloat(std::string(name), valueFloat);
+            RETURN_STATUS_IF_ERROR(AParcel_readFloat(parcel, &valueFloat));
+            setFloat(name, valueFloat);
             break;
         }
         case kTypeDouble: {
             double valueDouble;
-            RETURN_STATUS_IF_ERROR(parcel->readDouble(&valueDouble));
-            setDouble(std::string(name), valueDouble);
+            RETURN_STATUS_IF_ERROR(AParcel_readDouble(parcel, &valueDouble));
+            setDouble(name, valueDouble);
             break;
         }
         case kTypeString: {
-            const char* valueStr = parcel->readCString();
-            if (valueStr == NULL) {
-                ALOGE("Failed reading name for the key. Parsing aborted.");
-                return NAME_NOT_FOUND;
-            }
-            setString(std::string(name), valueStr);
+            std::string valueString;
+            AParcel_readString(parcel, &valueString, ndk::AParcel_stdStringAllocator);
+            setString(name, valueString);
             break;
         }
         case kTypeInt8: {
             int8_t value8;
-            RETURN_STATUS_IF_ERROR(parcel->readByte(&value8));
-            setInt8(std::string(name), value8);
+            RETURN_STATUS_IF_ERROR(AParcel_readByte(parcel, &value8));
+            setInt8(name, value8);
             break;
         }
         default: {
@@ -115,54 +111,57 @@ status_t ECOData::readFromParcel(const Parcel* parcel) {
     return NO_ERROR;
 }
 
-status_t ECOData::writeToParcel(Parcel* parcel) const {
+binder_status_t ECOData::writeToParcel(AParcel* parcel) const {
     if (parcel == nullptr) {
         ALOGE("writeToParcel failed. Parcel pointer can not be null");
         return BAD_VALUE;
     }
 
     // Writes out the data type and time.
-    RETURN_STATUS_IF_ERROR(parcel->writeInt32(mDataType));
-    RETURN_STATUS_IF_ERROR(parcel->writeInt64(mDataTimeUs));
+    RETURN_STATUS_IF_ERROR(AParcel_writeInt32(parcel, mDataType));
+    RETURN_STATUS_IF_ERROR(AParcel_writeInt64(parcel, mDataTimeUs));
 
     // Writes out number of items.
-    RETURN_STATUS_IF_ERROR(parcel->writeUint32(int32_t(mKeyValueStore.size())));
+    RETURN_STATUS_IF_ERROR(AParcel_writeUint32(parcel, int32_t(mKeyValueStore.size())));
 
     // Writes out the key-value pairs one by one.
     for (const auto& it : mKeyValueStore) {
         // Writes out the key.
-        RETURN_STATUS_IF_ERROR(parcel->writeCString(it.first.c_str()));
+        RETURN_STATUS_IF_ERROR(AParcel_writeString(parcel, it.first.c_str(),
+                                                   static_cast<int32_t>(it.first.size())));
 
         // Writes out the data type.
         const ECODataValueType& value = it.second;
-        RETURN_STATUS_IF_ERROR(parcel->writeInt32(static_cast<int32_t>(value.index())));
+        RETURN_STATUS_IF_ERROR(AParcel_writeInt32(parcel, static_cast<int32_t>(value.index())));
         switch (static_cast<ValueType>(value.index())) {
         case kTypeInt32:
-            RETURN_STATUS_IF_ERROR(parcel->writeInt32(std::get<int32_t>(it.second)));
+            RETURN_STATUS_IF_ERROR(AParcel_writeInt32(parcel, std::get<int32_t>(it.second)));
             break;
 
         case kTypeInt64:
-            RETURN_STATUS_IF_ERROR(parcel->writeInt64(std::get<int64_t>(it.second)));
+            RETURN_STATUS_IF_ERROR(AParcel_writeInt64(parcel, std::get<int64_t>(it.second)));
             break;
 
         case kTypeSize:
-            RETURN_STATUS_IF_ERROR(parcel->writeUint32(std::get<size_t>(it.second)));
+            RETURN_STATUS_IF_ERROR(AParcel_writeUint32(parcel, std::get<size_t>(it.second)));
             break;
 
         case kTypeFloat:
-            RETURN_STATUS_IF_ERROR(parcel->writeFloat(std::get<float>(it.second)));
+            RETURN_STATUS_IF_ERROR(AParcel_writeFloat(parcel, std::get<float>(it.second)));
             break;
 
         case kTypeDouble:
-            RETURN_STATUS_IF_ERROR(parcel->writeDouble(std::get<double>(it.second)));
+            RETURN_STATUS_IF_ERROR(AParcel_writeDouble(parcel, std::get<double>(it.second)));
             break;
 
         case kTypeString:
-            RETURN_STATUS_IF_ERROR(parcel->writeCString(std::get<std::string>(it.second).c_str()));
+            RETURN_STATUS_IF_ERROR(AParcel_writeString(
+                    parcel, std::get<std::string>(it.second).c_str(),
+                    static_cast<int32_t>(std::get<std::string>(it.second).size())));
             break;
 
         case kTypeInt8:
-            RETURN_STATUS_IF_ERROR(parcel->writeByte(std::get<int8_t>(it.second)));
+            RETURN_STATUS_IF_ERROR(AParcel_writeByte(parcel, std::get<int8_t>(it.second)));
             break;
 
         default:
@@ -416,6 +415,11 @@ std::string ECOData::debugString() const {
     return s;
 }
 
+std::string ECOData::toString() const {
+    return debugString();
+}
+
 }  // namespace eco
 }  // namespace media
 }  // namespace android
+}  // namespace aidl

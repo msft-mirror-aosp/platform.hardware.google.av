@@ -17,9 +17,9 @@
 #ifndef ANDROID_MEDIA_ECO_SESSION_H_
 #define ANDROID_MEDIA_ECO_SESSION_H_
 
-#include <android/media/eco/BnECOSession.h>
-#include <android/media/eco/IECOServiceStatsProvider.h>
-#include <binder/BinderService.h>
+#include <aidl/android/media/eco/BnECOSession.h>
+#include <aidl/android/media/eco/IECOServiceInfoListener.h>
+#include <aidl/android/media/eco/IECOServiceStatsProvider.h>
 
 #include <condition_variable>
 #include <deque>
@@ -37,8 +37,12 @@ namespace android {
 namespace media {
 namespace eco {
 
-using ::android::binder::Status;
-
+using aidl::android::media::eco::BnECOSession;
+using aidl::android::media::eco::ECOData;
+using aidl::android::media::eco::ECODataStatus;
+using aidl::android::media::eco::IECOServiceInfoListener;
+using aidl::android::media::eco::IECOServiceStatsProvider;
+using ::ndk::ScopedAStatus;
 /**
  * ECO Session.
  *
@@ -47,39 +51,40 @@ using ::android::binder::Status;
  * it only supports resolution of up to 720P and only for camera recording use case. Also, it only
  * supports encoder as the provider and camera as listener.
  */
-class ECOSession : public BinderService<ECOSession>,
-                   public BnECOSession,
-                   public virtual IBinder::DeathRecipient {
-    friend class BinderService<ECOSession>;
+class ECOSession : public BnECOSession {
+    using ::ndk::ICInterface::dump;
 
 public:
+    // Only the  ECOService could create ECOSession.
+    ECOSession(int32_t width, int32_t height, bool isCameraRecording);
+
     virtual ~ECOSession();
 
-    virtual Status addStatsProvider(const sp<IECOServiceStatsProvider>& provider,
-                                    const ECOData& statsConfig, /*out*/ bool* status);
+    virtual ScopedAStatus addStatsProvider(
+            const std::shared_ptr<IECOServiceStatsProvider>& provider, const ECOData& statsConfig,
+            /*out*/ bool* status);
 
-    virtual Status removeStatsProvider(const sp<IECOServiceStatsProvider>&, bool*);
+    virtual ScopedAStatus removeStatsProvider(const std::shared_ptr<IECOServiceStatsProvider>&,
+                                              bool*);
 
-    virtual Status addInfoListener(const sp<IECOServiceInfoListener>&,
-                                   const ECOData& listenerConfig,
-                                   /*out*/ bool* status);
+    virtual ScopedAStatus addInfoListener(const std::shared_ptr<IECOServiceInfoListener>&,
+                                          const ECOData& listenerConfig,
+                                          /*out*/ bool* status);
 
-    virtual Status removeInfoListener(const sp<IECOServiceInfoListener>&, bool*);
+    virtual ScopedAStatus removeInfoListener(const std::shared_ptr<IECOServiceInfoListener>&,
+                                             bool*);
 
-    virtual Status pushNewStats(const ECOData&, bool*);
+    virtual ScopedAStatus pushNewStats(const ECOData&, bool*);
 
-    virtual Status getWidth(int32_t* _aidl_return);
+    virtual ScopedAStatus getWidth(int32_t* _aidl_return);
 
-    virtual Status getHeight(int32_t* _aidl_return);
+    virtual ScopedAStatus getHeight(int32_t* _aidl_return);
 
-    virtual Status getIsCameraRecording(bool*);
+    virtual ScopedAStatus getIsCameraRecording(bool*);
 
-    virtual Status getNumOfListeners(int32_t*);
+    virtual ScopedAStatus getNumOfListeners(int32_t*);
 
-    virtual Status getNumOfProviders(int32_t*);
-
-    // IBinder::DeathRecipient implementation
-    virtual void binderDied(const wp<IBinder>& who);
+    virtual ScopedAStatus getNumOfProviders(int32_t*);
 
     // Grant permission to EcoSessionTest to run test.
     friend class EcoSessionTest;
@@ -88,14 +93,11 @@ public:
     friend class ECOService;
 
 protected:
-    static android::sp<ECOSession> createECOSession(int32_t width, int32_t height,
-                                                    bool isCameraRecording);
+    static std::shared_ptr<ECOSession> createECOSession(int32_t width, int32_t height,
+                                                        bool isCameraRecording);
 
 private:
-    // Only the  ECOService could create ECOSession.
-    ECOSession(int32_t width, int32_t height, bool isCameraRecording);
-
-    virtual status_t dump(int fd, const Vector<String16>& args);
+    virtual status_t dump(int fd, const std::vector<std::string>& args);
 
     // Start the main thread for processing the stats and pushing info to listener.
     static void startThread(ECOSession* session);
@@ -136,11 +138,11 @@ private:
     } QpCondition;
     QpCondition mListenerQpCondition;
 
-    android::sp<IECOServiceInfoListener> mListener;
-    String16 mListenerName;
+    std::shared_ptr<IECOServiceInfoListener> mListener;
+    std::string mListenerName;
 
-    android::sp<IECOServiceStatsProvider> mProvider;
-    String16 mProviderName;
+    std::shared_ptr<IECOServiceStatsProvider> mProvider;
+    std::string mProviderName;
 
     // Main thread for processing the events from provider.
     std::thread mThread;
