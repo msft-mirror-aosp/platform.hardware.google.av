@@ -17,13 +17,15 @@
 #ifndef ANDROID_MEDIA_ECO_DATA_H_
 #define ANDROID_MEDIA_ECO_DATA_H_
 
-#include <binder/Parcel.h>
-#include <binder/Parcelable.h>
+#include <android/binder_auto_utils.h>
+#include <android/binder_parcel.h>
+#include <android/binder_status.h>
 
 #include <string>
 #include <unordered_map>
 #include <variant>
 
+namespace aidl {
 namespace android {
 namespace media {
 namespace eco {
@@ -71,7 +73,7 @@ enum class ECODataStatus {
 *   // Set encoding bitrate.
 *   data->setInt32("stats-encoder-target-bitrate-bps", 22000000);
 */
-class ECOData : public Parcelable {
+class ECOData {
 public:
     using ECODataValueType =
             std::variant<int32_t, int64_t, size_t, float, double, std::string, int8_t>;
@@ -130,8 +132,8 @@ public:
     /**
     * Serialization over Binder
     */
-    status_t readFromParcel(const Parcel* parcel) override;
-    status_t writeToParcel(Parcel* parcel) const override;
+    binder_status_t readFromParcel(const AParcel* parcel);
+    binder_status_t writeToParcel(AParcel* parcel) const;
 
     /* Returns the type of the data. */
     int32_t getDataType() const;
@@ -191,6 +193,12 @@ protected:
 
     template <typename T>
     ECODataStatus findValue(const std::string& key, T* out) const;
+
+    static bool copyKeyValue(const ECOData& src, ECOData* dst) {
+        if (src.isEmpty() || dst == nullptr) return false;
+        dst->mKeyValueStore = src.mKeyValueStore;
+        return true;
+    }
 };
 
 // A simple ECOData iterator that will iterate over all the key value paris in ECOData.
@@ -217,5 +225,6 @@ private:
 }  // namespace eco
 }  // namespace media
 }  // namespace android
+}  // namespace aidl
 
 #endif  // ANDROID_MEDIA_ECO_DATA_H_
