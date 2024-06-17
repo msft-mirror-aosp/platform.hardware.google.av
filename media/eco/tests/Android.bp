@@ -10,8 +10,8 @@ cc_defaults {
         "-Wall",
         "-Werror",
     ],
+
     shared_libs: [
-        "libbinder",
         "libbinder_ndk",
         "libcutils",
         "libutils",
