@@ -16,6 +16,8 @@
 
 #include "eco/ECODebug.h"
 
+#include <utils/Log.h>
+
 namespace android {
 namespace media {
 namespace eco {

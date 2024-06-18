@@ -17,7 +17,6 @@
 package android.media.eco;
 
 import android.media.eco.ECOData;
-import android.os.IBinder;
 
 /**
  * Binder interface for ECO service information listener.
