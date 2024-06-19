@@ -73,8 +73,10 @@ ECOService::ECOService() : BnECOService() {
     SanitizeSession([&](MapIterType iter) {
         if (iter->first == newCfg) {
             std::shared_ptr<ECOSession> session = iter->second.lock();
-            foundSession = true;
-            *_aidl_return = session;
+            if (session != nullptr) {
+                foundSession = true;
+                *_aidl_return = session;
+            }
         }
     });
 
@@ -113,7 +115,9 @@ ECOService::ECOService() : BnECOService() {
     Mutex::Autolock lock(mServiceLock);
     SanitizeSession([&](MapIterType iter) {
         std::shared_ptr<ECOSession> session = iter->second.lock();
-        _aidl_return->push_back(session->asBinder());
+        if (session != nullptr) {
+            _aidl_return->push_back(session->asBinder());
+        }
     });
     return ndk::ScopedAStatus::ok();
 }
