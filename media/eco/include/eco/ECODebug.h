@@ -25,6 +25,8 @@
 namespace android {
 namespace media {
 namespace eco {
+using aidl::android::media::eco::ECOData;
+using aidl::android::media::eco::ECODataStatus;
 
 static const char* kDisableEcoServiceProperty = "vendor.media.ecoservice.disable";
 static const char* kDebugLogsLevelProperty = "vendor.media.ecoservice.log.level";
@@ -52,14 +54,10 @@ enum ECOLogLevel : uint32_t {
 void updateLogLevel();
 
 // Convenience methods for constructing binder::Status objects for error returns
-#define STATUS_ERROR(errorCode, errorString)  \
-    binder::Status::fromServiceSpecificError( \
-            errorCode, String8::format("%s:%d: %s", __FUNCTION__, __LINE__, errorString))
+#define STATUS_ERROR(errorCode, errorString) ndk::ScopedAStatus::fromServiceSpecificError(errorCode)
 
 #define STATUS_ERROR_FMT(errorCode, errorString, ...) \
-    binder::Status::fromServiceSpecificError(         \
-            errorCode,                                \
-            String8::format("%s:%d: " errorString, __FUNCTION__, __LINE__, __VA_ARGS__))
+    ndk::ScopedAStatus::fromServiceSpecificError(errorCode)
 
 }  // namespace eco
 }  // namespace media
