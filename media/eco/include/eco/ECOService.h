@@ -23,6 +23,7 @@
 #include <utils/Log.h>
 #include <utils/Mutex.h>
 
+#include <functional>
 #include <list>
 
 #include "eco/ECODebug.h"
