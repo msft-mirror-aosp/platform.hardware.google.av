@@ -547,7 +547,8 @@ ScopedAStatus ECOSession::getNumOfProviders(int32_t* _aidl_return) {
     return ndk::ScopedAStatus::ok();
 }
 
-status_t ECOSession::dump(int fd, const std::vector<std::string>& /*args*/) {
+binder_status_t ECOSession::dump(int fd, const char**/*args*/,
+                                 uint32_t/*numArgs*/) {
     std::scoped_lock<std::mutex> lock(mSessionLock);
     dprintf(fd, "\n== Session Info: ==\n\n");
     dprintf(fd,

@@ -52,39 +52,37 @@ using ::ndk::ScopedAStatus;
  * supports encoder as the provider and camera as listener.
  */
 class ECOSession : public BnECOSession {
-    using ::ndk::ICInterface::dump;
-
 public:
     // Only the  ECOService could create ECOSession.
     ECOSession(int32_t width, int32_t height, bool isCameraRecording);
 
     virtual ~ECOSession();
 
-    virtual ScopedAStatus addStatsProvider(
+    ScopedAStatus addStatsProvider(
             const std::shared_ptr<IECOServiceStatsProvider>& provider, const ECOData& statsConfig,
-            /*out*/ bool* status);
+            /*out*/ bool* status) override;
 
-    virtual ScopedAStatus removeStatsProvider(const std::shared_ptr<IECOServiceStatsProvider>&,
-                                              bool*);
+    ScopedAStatus removeStatsProvider(const std::shared_ptr<IECOServiceStatsProvider>&,
+                                      bool*) override;
 
-    virtual ScopedAStatus addInfoListener(const std::shared_ptr<IECOServiceInfoListener>&,
-                                          const ECOData& listenerConfig,
-                                          /*out*/ bool* status);
+    ScopedAStatus addInfoListener(const std::shared_ptr<IECOServiceInfoListener>&,
+                                  const ECOData& listenerConfig,
+                                  /*out*/ bool* status) override;
 
-    virtual ScopedAStatus removeInfoListener(const std::shared_ptr<IECOServiceInfoListener>&,
-                                             bool*);
+    ScopedAStatus removeInfoListener(const std::shared_ptr<IECOServiceInfoListener>&,
+                                     bool*) override;
 
-    virtual ScopedAStatus pushNewStats(const ECOData&, bool*);
+    ScopedAStatus pushNewStats(const ECOData&, bool*) override;
 
-    virtual ScopedAStatus getWidth(int32_t* _aidl_return);
+    ScopedAStatus getWidth(int32_t* _aidl_return) override;
 
-    virtual ScopedAStatus getHeight(int32_t* _aidl_return);
+    ScopedAStatus getHeight(int32_t* _aidl_return) override;
 
-    virtual ScopedAStatus getIsCameraRecording(bool*);
+    ScopedAStatus getIsCameraRecording(bool* _aidl_return) override;
 
-    virtual ScopedAStatus getNumOfListeners(int32_t*);
+    ScopedAStatus getNumOfListeners(int32_t* _aidl_return) override;
 
-    virtual ScopedAStatus getNumOfProviders(int32_t*);
+    ScopedAStatus getNumOfProviders(int32_t* _aidl_return) override;
 
     // Grant permission to EcoSessionTest to run test.
     friend class EcoSessionTest;
@@ -97,7 +95,7 @@ protected:
                                                         bool isCameraRecording);
 
 private:
-    virtual status_t dump(int fd, const std::vector<std::string>& args);
+    binder_status_t dump(int fd, const char** args, uint32_t numArgs) override;
 
     // Start the main thread for processing the stats and pushing info to listener.
     static void startThread(ECOSession* session);

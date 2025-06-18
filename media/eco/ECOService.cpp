@@ -145,17 +145,17 @@ void ECOService::SanitizeSession(
 
 /*virtual*/ void ECOService::binderDied(const std::weak_ptr<AIBinder>& /*who*/) {}
 
-status_t ECOService::dump(int fd, const std::vector<std::string>& args) {
-    Mutex::Autolock lock(mServiceLock);
+binder_status_t ECOService::dump(int fd, const char** args, uint32_t numArgs) {
     dprintf(fd, "\n== ECO Service info: ==\n\n");
-    dprintf(fd, "Number of ECOServices: %zu\n", mSessionConfigToSessionMap.size());
-    for (auto it = mSessionConfigToSessionMap.begin(), end = mSessionConfigToSessionMap.end();
-         it != end; it++) {
-        std::shared_ptr<ECOSession> session = std::shared_ptr<ECOSession>(it->second);
+    Mutex::Autolock lock(mServiceLock);
+    dprintf(fd, "Number of ECOSession: %zu\n", mSessionConfigToSessionMap.size());
+
+    SanitizeSession([&](MapIterType iter) {
+        std::shared_ptr<ECOSession> session = iter->second.lock();
         if (session != nullptr) {
-            session->dump(fd, args);
+            session->dump(fd, args, numArgs);
         }
-    }
+    });
 
     return NO_ERROR;
 }
