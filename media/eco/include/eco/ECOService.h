@@ -56,19 +56,17 @@ using ndk::ScopedAStatus;
  * Then ECOService will safely destroy the ECOSession.
  */
 class ECOService : public BnECOService {
-    using ::ndk::ICInterface::dump;
-
 public:
     ECOService();
 
     virtual ~ECOService() = default;
 
-    virtual ScopedAStatus obtainSession(int32_t width, int32_t height, bool isCameraRecording,
-                                        std::shared_ptr<IECOSession>* _aidl_return);
+    ScopedAStatus obtainSession(int32_t width, int32_t height, bool isCameraRecording,
+                                std::shared_ptr<IECOSession>* _aidl_return) override;
 
-    virtual ScopedAStatus getNumOfSessions(int32_t* _aidl_return);
+    ScopedAStatus getNumOfSessions(int32_t* _aidl_return) override;
 
-    virtual ScopedAStatus getSessions(std::vector<::ndk::SpAIBinder>* _aidl_return);
+    ScopedAStatus getSessions(std::vector<::ndk::SpAIBinder>* _aidl_return) override;
 
     static status_t instantiate() {
         std::shared_ptr<ECOService> service = ::ndk::SharedRefBase::make<ECOService>();
@@ -84,7 +82,7 @@ public:
     // IBinder::DeathRecipient implementation
     virtual void binderDied(const std::weak_ptr<AIBinder>& who);
 
-    virtual status_t dump(int fd, const std::vector<std::string>& args);
+    binder_status_t dump(int fd, const char** args, uint32_t numArgs) override;
 
 private:
     // Lock guarding ECO service state
